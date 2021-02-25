@@ -24,23 +24,23 @@
 package se.kth.id2203;
 
 import se.kth.id2203.bootstrapping._
-import se.kth.id2203.kvstore.KVService;
-import se.kth.id2203.networking.NetAddress;
+import se.kth.id2203.kvservice.KVService
+import se.kth.id2203.networking.NetAddress
 import se.kth.id2203.overlay._
 import se.sics.kompics.sl._
-import se.sics.kompics.Init;
-import se.sics.kompics.network.Network;
+import se.sics.kompics.{Component, Init}
+import se.sics.kompics.network.Network
 import se.sics.kompics.timer.Timer;
 
 class ParentComponent extends ComponentDefinition {
 
   //******* Ports ******
-  val net = requires[Network];
-  val timer = requires[Timer];
+  val net: PositivePort[Network] = requires[Network];
+  val timer: PositivePort[Timer] = requires[Timer];
   //******* Children ******
-  val overlay = create(classOf[VSOverlayManager], Init.NONE);
-  val kv = create(classOf[KVService], Init.NONE);
-  val boot = cfg.readValue[NetAddress]("id2203.project.bootstrap-address") match {
+  val overlay: Component = create(classOf[VSOverlayManager], Init.NONE);
+  val kv: Component = create(classOf[KVService], Init.NONE);
+  val boot: Component = cfg.readValue[NetAddress]("id2203.project.bootstrap-address") match {
     case Some(_) => create(classOf[BootstrapClient], Init.NONE); // start in client mode
     case None    => create(classOf[BootstrapServer], Init.NONE); // start in server mode
   }

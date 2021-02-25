@@ -43,12 +43,12 @@ import util.Random;
 class VSOverlayManager extends ComponentDefinition {
 
   //******* Ports ******
-  val route = provides(Routing);
-  val boot = requires(Bootstrapping);
-  val net = requires[Network];
-  val timer = requires[Timer];
+  val route: NegativePort[Routing.type] = provides(Routing);
+  val boot: PositivePort[Bootstrapping.type] = requires(Bootstrapping);
+  val net: PositivePort[Network] = requires[Network];
+  val timer: PositivePort[Timer] = requires[Timer];
   //******* Fields ******
-  val self = cfg.getValue[NetAddress]("id2203.project.address");
+  val self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address");
   private var lut: Option[LookupTable] = None;
   //******* Handlers ******
   boot uponEvent {

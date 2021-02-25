@@ -22,7 +22,7 @@
     <logger name="se.kth.id2203" level="DEBUG"/>
     <logger name="se.sics.kompics.network.netty.serialization" level="TRACE"/>
 
-    <root level="INFO">
+    <root level="DEBUG">
         <appender-ref ref="CONSOLE"/>
     </root>
 

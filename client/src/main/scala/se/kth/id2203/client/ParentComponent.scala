@@ -23,7 +23,7 @@
  */
 package se.kth.id2203.client;
 
-import se.kth.id2203.kvstore.ClientService;
+import se.kth.id2203.kvservice.ClientService;
 import se.kth.id2203.networking._
 import se.sics.kompics.sl._;
 import se.sics.kompics.Init;

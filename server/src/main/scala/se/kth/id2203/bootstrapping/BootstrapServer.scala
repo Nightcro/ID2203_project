@@ -43,12 +43,12 @@ class BootstrapServer extends ComponentDefinition {
   import BootstrapServer._;
 
   //******* Ports ******
-  val boot = provides(Bootstrapping);
-  val net = requires[Network];
-  val timer = requires[Timer];
+  val boot: NegativePort[Bootstrapping.type] = provides(Bootstrapping);
+  val net: PositivePort[Network] = requires[Network];
+  val timer: PositivePort[Timer] = requires[Timer];
   //******* Fields ******
-  val self = cfg.getValue[NetAddress]("id2203.project.address");
-  val bootThreshold = cfg.getValue[Int]("id2203.project.bootThreshold");
+  val self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address");
+  val bootThreshold: Int = cfg.getValue[Int]("id2203.project.bootThreshold");
   private var state: State = Collecting;
   private var timeoutId: Option[UUID] = None;
   private val active = mutable.HashSet.empty[NetAddress];

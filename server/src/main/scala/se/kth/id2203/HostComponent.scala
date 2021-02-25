@@ -23,21 +23,21 @@
  */
 package se.kth.id2203;
 
-import se.kth.id2203.networking.NetAddress;
+import se.kth.id2203.networking.NetAddress
 import se.sics.kompics.sl._
-import se.sics.kompics.Init;
-import se.sics.kompics.network.Network;
-import se.sics.kompics.network.netty.NettyInit;
-import se.sics.kompics.network.netty.NettyNetwork;
-import se.sics.kompics.timer.Timer;
+import se.sics.kompics.{Component, Init}
+import se.sics.kompics.network.Network
+import se.sics.kompics.network.netty.NettyInit
+import se.sics.kompics.network.netty.NettyNetwork
+import se.sics.kompics.timer.Timer
 import se.sics.kompics.timer.java.JavaTimer;
 
 class HostComponent extends ComponentDefinition {
 
-  val self = cfg.getValue[NetAddress]("id2203.project.address");
-  val timer = create(classOf[JavaTimer], Init.NONE);
-  val net = create(classOf[NettyNetwork], new NettyInit(self));
-  val parent = create(classOf[ParentComponent], Init.NONE);
+  val self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address");
+  val timer: Component = create(classOf[JavaTimer], Init.NONE);
+  val net: Component = create(classOf[NettyNetwork], new NettyInit(self));
+  val parent: Component = create(classOf[ParentComponent], Init.NONE);
 
   {
     connect[Timer](timer -> parent);

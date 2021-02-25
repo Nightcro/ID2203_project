@@ -24,7 +24,7 @@
 package se.kth.id2203.simulation;
 
 import java.util.UUID;
-import se.kth.id2203.kvstore._;
+import se.kth.id2203.kvservice._;
 import se.kth.id2203.networking._;
 import se.kth.id2203.overlay.RouteMsg;
 import se.sics.kompics.sl._

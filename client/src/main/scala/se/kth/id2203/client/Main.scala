@@ -27,7 +27,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.UUID;
 import se.kth.id2203.networking._;
-import se.kth.id2203.kvstore.ClientConsole;
+import se.kth.id2203.kvservice.ClientConsole;
 import se.sics.kompics.Kompics;
 import se.sics.kompics.config._;
 import se.sics.kompics.network.netty.serialization.Serializers;

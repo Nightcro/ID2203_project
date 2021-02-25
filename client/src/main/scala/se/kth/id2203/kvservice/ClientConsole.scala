@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package se.kth.id2203.kvstore
+package se.kth.id2203.kvservice
 
 import com.larskroll.common.repl._
 import com.typesafe.scalalogging.StrictLogging;
