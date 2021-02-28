@@ -23,11 +23,15 @@
  */
 package se.kth.id2203.overlay;
 
-import se.kth.id2203.bootstrapping._;
-import se.kth.id2203.networking._;
-import se.sics.kompics.sl._;
-import se.sics.kompics.network.Network;
-import se.sics.kompics.timer.Timer;
+import se.kth.id2203.beb.{BEB_Topology, BestEffortBroadcast}
+import se.kth.id2203.bootstrapping._
+import se.kth.id2203.epfd.{EventuallyPerfectFailureDetector, StartEPFD}
+import se.kth.id2203.networking._
+import se.kth.id2203.paxos.{SequenceConsensus, StartSequenceCons}
+import se.sics.kompics.sl._
+import se.sics.kompics.network.Network
+import se.sics.kompics.timer.Timer
+
 import util.Random;
 
 /**
@@ -47,6 +51,9 @@ class VSOverlayManager extends ComponentDefinition {
   val boot: PositivePort[Bootstrapping.type] = requires(Bootstrapping);
   val net: PositivePort[Network] = requires[Network];
   val timer: PositivePort[Timer] = requires[Timer];
+  val epfd: PositivePort[EventuallyPerfectFailureDetector] = requires[EventuallyPerfectFailureDetector];
+  var seqCons: PositivePort[SequenceConsensus] = requires[SequenceConsensus];
+  var beb: PositivePort[BestEffortBroadcast] = requires[BestEffortBroadcast];
   //******* Fields ******
   val self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address");
   private var lut: Option[LookupTable] = None;
@@ -61,6 +68,15 @@ class VSOverlayManager extends ComponentDefinition {
     case Booted(assignment: LookupTable) => {
       log.info("Got NodeAssignment, overlay ready.");
       lut = Some(assignment);
+      val currentPartition = assignment.findPartitionForNetAddress(self);
+      currentPartition match {
+        case Some((_, cp)) =>
+          trigger(BEB_Topology(cp.toSet) -> beb)
+          trigger(StartEPFD(cp.toSet) -> epfd)
+          trigger(StartSequenceCons(cp.toSet) -> seqCons)
+        case None =>
+          print("Current partition not found")
+      }
     }
   }
 

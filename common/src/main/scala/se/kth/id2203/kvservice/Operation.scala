@@ -23,27 +23,35 @@
  */
 package se.kth.id2203.kvservice
 
-import java.util.UUID;
+import se.kth.id2203.networking.NetAddress
+
+import java.util.UUID
 import se.sics.kompics.KompicsEvent;
 
 trait Operation extends KompicsEvent {
   def id: UUID;
   def key: String;
+  def src: NetAddress;
 }
 
 @SerialVersionUID(-374812437823538710L)
-case class Op(key: String, id: UUID = UUID.randomUUID()) extends Operation with Serializable {
-  def response(status: OpCode.OpCode): OpResponse = OpResponse(id, status);
+case class Op(key: String, src: NetAddress = null, id: UUID = UUID.randomUUID()) extends Operation with Serializable {
+  def response(status: OpCode.OpCode, value: Option[String]): OpResponse = OpResponse(id, status, value);
 }
 
 @SerialVersionUID(-374812437823538710L)
-case class Get(key: String, id: UUID = UUID.randomUUID()) extends Operation with Serializable {
-  def response(status: OpCode.OpCode): OpResponse = OpResponse(id, status);
+case class Get(key: String, src: NetAddress  = null, id: UUID = UUID.randomUUID()) extends Operation with Serializable {
+  def response(status: OpCode.OpCode, value: Option[String]): OpResponse = OpResponse(id, status, value);
 }
 
 @SerialVersionUID(-374812437823538710L)
-case class Put(key: String, value: String, id: UUID = UUID.randomUUID()) extends Operation with Serializable {
-  def response(status: OpCode.OpCode): OpResponse = OpResponse(id, status);
+case class Put(key: String, value: String, src: NetAddress  = null, id: UUID = UUID.randomUUID()) extends Operation with Serializable {
+  def response(status: OpCode.OpCode, value: Option[String]): OpResponse = OpResponse(id, status, value);
+}
+
+@SerialVersionUID(-374812437823538710L)
+case class Cas(key: String, referenceValue: String, newValue: String, src: NetAddress = null, id: UUID = UUID.randomUUID()) extends Operation with Serializable {
+  def response(status: OpCode.OpCode, value: Option[String]): OpResponse = OpResponse(id, status, value);
 }
 
 object OpCode {
@@ -59,4 +67,4 @@ trait OperationResponse extends KompicsEvent {
 }
 
 @SerialVersionUID(155271583133228661L)
-case class OpResponse(id: UUID, status: OpCode.OpCode) extends OperationResponse with Serializable;
+case class OpResponse(id: UUID, status: OpCode.OpCode, value: Option[String]) extends OperationResponse with Serializable;

@@ -46,6 +46,10 @@ class LookupTable extends NodeAssignment with Serializable {
     case (acc, kv) => acc ++ kv._2
   }
 
+  def findPartitionForNetAddress(address: NetAddress): Option[(Int, Iterable[NetAddress])] =  {
+    partitions.find(_._2.exists(_.equals(address)))
+  }
+
   override def toString(): String = {
     val sb = new StringBuilder();
     sb.append("LookupTable(\n");

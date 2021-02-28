@@ -27,10 +27,10 @@ class GossipLeaderElection() extends ComponentDefinition {
 
   val self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address")
   var topology: Set[NetAddress] = Set.empty;
-  val delta: Long = cfg.getValue[Long]("ble.simulation.delay");
+  val delta: Long = cfg.getValue[Long]("id2203.project.delay");
   var majority: Int = 0;
 
-  private var period = cfg.getValue[Long]("ble.simulation.delay");
+  private var period = cfg.getValue[Long]("id2203.project.delay");
   private val ballots = mutable.Map.empty[NetAddress, Long];
 
   private var round = 0L;
@@ -54,15 +54,18 @@ class GossipLeaderElection() extends ComponentDefinition {
     ballot + ballotOne
   }
 
+  ble uponEvent {
+    case StartElection(nodes: Set[NetAddress]) => {
+      topology = nodes;
+      majority = topology.size / 2 + 1;
+      startTimer();
+    }
+  }
+
   private def startTimer(): Unit = {
     val scheduledTimeout = new ScheduleTimeout(period);
     scheduledTimeout.setTimeoutEvent(CheckTimeout(scheduledTimeout));
     trigger(scheduledTimeout -> timer);
-  }
-
-  private def makeLeader(topProcess: (Long, NetAddress)) {
-    /* INSERT YOUR CODE HERE */
-
   }
 
   private def checkLeader() {
@@ -113,14 +116,6 @@ class GossipLeaderElection() extends ComponentDefinition {
       } else {
         period = period + delta;
       }
-    }
-  }
-
-  ble uponEvent {
-    case StartElection(nodes: Set[NetAddress]) => {
-      topology = nodes;
-      majority = topology.size / 2 + 1;
-      startTimer();
     }
   }
 }

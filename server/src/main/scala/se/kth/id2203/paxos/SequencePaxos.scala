@@ -1,7 +1,7 @@
 package se.kth.id2203.paxos
 
 import se.kth.id2203.ble.{BLE_Leader, BallotLeaderElection, StartElection}
-import se.kth.id2203.kvservice.Op
+import se.kth.id2203.kvservice.Operation
 import se.kth.id2203.networking.{NetAddress, NetMessage}
 import se.kth.id2203.paxos
 import se.sics.kompics.sl._
@@ -18,13 +18,13 @@ class SequenceConsensus extends Port {
 
 case class StartSequenceCons(nodes: Set[NetAddress]) extends KompicsEvent;
 case class Prepare(nL: Long, ld: Int, na: Long) extends KompicsEvent;
-case class Promise(nL: Long, na: Long, suffix: List[Op], ld: Int) extends KompicsEvent;
-case class AcceptSync(nL: Long, suffix: List[Op], ld: Int) extends KompicsEvent;
-case class Accept(nL: Long, c: Op) extends KompicsEvent;
+case class Promise(nL: Long, na: Long, suffix: List[Operation], ld: Int) extends KompicsEvent;
+case class AcceptSync(nL: Long, suffix: List[Operation], ld: Int) extends KompicsEvent;
+case class Accept(nL: Long, c: Operation) extends KompicsEvent;
 case class Accepted(nL: Long, m: Int) extends KompicsEvent;
 case class Decide(ld: Int, nL: Long) extends KompicsEvent;
-case class SC_Propose(value: Op) extends KompicsEvent;
-case class SC_Decide(value: Op) extends KompicsEvent;
+case class SC_Propose(value: Operation) extends KompicsEvent;
+case class SC_Decide(value: Operation) extends KompicsEvent;
 
 object State extends Enumeration {
   type State = Value;
@@ -55,20 +55,20 @@ class SequencePaxos extends ComponentDefinition {
   var nProm = 0L;
   var leader: Option[NetAddress] = None;
   var na = 0L;
-  var va = List.empty[Op];
+  var va = List.empty[Operation];
   var ld = 0;
   // leader state
-  var propCmds = List.empty[Op];
+  var propCmds = List.empty[Operation];
   val las = mutable.Map.empty[NetAddress, Int];
   val lds = mutable.Map.empty[NetAddress, Int];
   var lc = 0;
-  val acks = mutable.Map.empty[NetAddress, (Long, List[Op])];
+  val acks = mutable.Map.empty[NetAddress, (Long, List[Operation])];
 
-  def suffix(s: List[Op], l: Int): List[Op] = {
+  def suffix(s: List[Operation], l: Int): List[Operation] = {
     s.drop(l)
   }
 
-  def prefix(s: List[Op], l: Int): List[Op] = {
+  def prefix(s: List[Operation], l: Int): List[Operation] = {
     s.take(l)
   }
 
@@ -80,7 +80,7 @@ class SequencePaxos extends ComponentDefinition {
 
         if ((self == l) && (nL > nProm)) {
           state = (LEADER, PREPARE);
-          propCmds = List.empty[Op];
+          propCmds = List.empty[Operation];
           las.clear();
           lds.clear();
           acks.clear();
@@ -108,7 +108,7 @@ class SequencePaxos extends ComponentDefinition {
         nProm = np;
         state = (FOLLOWER, PREPARE);
 
-        var sfx = List.empty[Op];
+        var sfx = List.empty[Operation];
         if (na >= n) {
           sfx = suffix(va, ldp);
         }
@@ -128,7 +128,7 @@ class SequencePaxos extends ComponentDefinition {
           val (k, sfx) = acks(P.maxBy(acks(_)._1));
           va = prefix(va, ld) ++ sfx ++ propCmds;
           las(self) = va.size;
-          propCmds = List.empty[Op];
+          propCmds = List.empty[Operation];
           state = (LEADER, ACCEPT);
 
           for (p <- pi.filter(x => lds.contains(x) && (x != self))) {

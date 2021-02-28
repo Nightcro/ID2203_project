@@ -23,11 +23,12 @@
  */
 package se.kth.id2203.kvservice;
 
+import se.kth.id2203.beb.{BEB_Broadcast, BestEffortBroadcast}
 import se.kth.id2203.networking._
 import se.kth.id2203.overlay.Routing
 import se.kth.id2203.paxos.{SC_Decide, SC_Propose, SequenceConsensus}
 import se.sics.kompics.sl._
-import se.sics.kompics.network.Network;
+import se.sics.kompics.network.Network
 
 import scala.collection.mutable;
 
@@ -37,18 +38,36 @@ class KVService extends ComponentDefinition {
   val net: PositivePort[Network] = requires[Network];
   val route: PositivePort[Routing.type] = requires(Routing);
   val sc: PositivePort[SequenceConsensus] = requires[SequenceConsensus];
+  var beb: PositivePort[BestEffortBroadcast] = requires[BestEffortBroadcast];
   //******* Fields ******
   val self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address");
   val keyValueMap = mutable.Map.empty[String, String];
   //******* Handlers ******
   net uponEvent {
-    case NetMessage(header, op @ Get(key, _)) => {
-      log.info("Got operation {}! Now implement me please :)", op);
-      trigger(NetMessage(self, header.src, op.response(OpCode.NotImplemented)) -> net);
+    case NetMessage(_, op: Operation) => {
+      trigger(BEB_Broadcast(op) -> beb);
+      trigger(SC_Propose(op) -> sc);
     }
-    case NetMessage(header, op @ Put(key, value, _)) => {
-      log.info("Got operation {}! Now implement me please :)", op);
-      trigger(NetMessage(self, header.src, op.response(OpCode.NotImplemented)) -> net);
+  }
+
+  sc uponEvent {
+    case SC_Decide(op: Get) => {
+      log.debug("GET operation {}", op);
+      val value = if (keyValueMap.contains(op.key)) Some(keyValueMap(op.key)) else None
+      trigger(NetMessage(self, op.src, op.response(OpCode.Ok, value)) -> net);
+    }
+    case SC_Decide(op: Put) => {
+      log.debug("PUT operation {}", op);
+      keyValueMap += ((op.key, op.value))
+      trigger(NetMessage(self, op.src, op.response(OpCode.Ok, Some(op.value))) -> net);
+    }
+    case SC_Decide(op: Cas) => {
+      log.debug("CAS operation {}", op);
+      val value: Option[String] = if (keyValueMap.contains(op.key)) Some(keyValueMap(op.key)) else None
+      if ((value.isDefined) && (value.get == op.referenceValue)) {
+        keyValueMap += ((op.key, op.newValue))
+      }
+      trigger(NetMessage(self, op.src, op.response(OpCode.Ok, value)) -> net)
     }
   }
 }
