@@ -1,7 +1,7 @@
 package se.kth.id2203.paxos
 
-import se.kth.id2203.ble.{BLE_Leader, BallotLeaderElection, StartElection}
-import se.kth.id2203.kvservice.Operation
+import se.kth.id2203.ble.{BLE_Leader, BLE_Topology, BallotLeaderElection, StartElection}
+import se.kth.id2203.kvservice.{Operation, Promote}
 import se.kth.id2203.networking.{NetAddress, NetMessage}
 import se.kth.id2203.paxos
 import se.sics.kompics.sl._
@@ -95,10 +95,16 @@ class SequencePaxos extends ComponentDefinition {
           acks(l) = (na, suffix(va, ld));
           lds(self) = ld;
           nProm = nL;
+          trigger(NetMessage(self, self, Promote(LEADER)) -> pl);
         } else {
           state = (FOLLOWER, state._2);
+          trigger(NetMessage(self, self, Promote(FOLLOWER)) -> pl);
         }
       }
+    }
+    case BLE_Topology(topology) => {
+      pi = topology;
+      majority = pi.size / 2 + 1;
     }
   }
 

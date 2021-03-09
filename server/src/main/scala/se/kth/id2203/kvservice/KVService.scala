@@ -23,14 +23,18 @@
  */
 package se.kth.id2203.kvservice;
 
-import se.kth.id2203.beb.{BEB_Broadcast, BestEffortBroadcast}
+import se.kth.id2203.beb.{BEB_Broadcast, BEB_Deliver, BestEffortBroadcast}
 import se.kth.id2203.networking._
 import se.kth.id2203.overlay.Routing
+import se.kth.id2203.paxos
+import se.kth.id2203.paxos.Role.{FOLLOWER, LEADER, Role}
 import se.kth.id2203.paxos.{SC_Decide, SC_Propose, SequenceConsensus}
 import se.sics.kompics.sl._
 import se.sics.kompics.network.Network
 
 import scala.collection.mutable;
+
+case class Promote(rl: Role) extends KompicsEvent;
 
 class KVService extends ComponentDefinition {
 
@@ -42,32 +46,71 @@ class KVService extends ComponentDefinition {
   //******* Fields ******
   val self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address");
   val keyValueMap = mutable.Map.empty[String, String];
+  var state: paxos.Role.Value = FOLLOWER;
+
   //******* Handlers ******
+  beb uponEvent {
+    case BEB_Deliver(src, op: Operation) => {
+      log.debug("Propose {} {}", op, op.key);
+      trigger(SC_Propose(op) -> sc);
+    }
+  }
+
   net uponEvent {
     case NetMessage(_, op: Operation) => {
+      log.debug("Trigger broadcast {} {}", op, op.key);
       trigger(BEB_Broadcast(op) -> beb);
-      trigger(SC_Propose(op) -> sc);
+    }
+    case NetMessage(_, Promote(rl)) => {
+      state = rl;
     }
   }
 
   sc uponEvent {
     case SC_Decide(op: Get) => {
-      log.debug("GET operation {}", op);
+      log.info("GET operation {}", op);
       val value = if (keyValueMap.contains(op.key)) Some(keyValueMap(op.key)) else None
-      trigger(NetMessage(self, op.src, op.response(OpCode.Ok, value)) -> net);
+
+      state match {
+        case LEADER => {
+          log.info("Leader answering... {}", op.src);
+          trigger(NetMessage(self, op.src, op.response(OpCode.Ok, value)) -> net);
+        }
+        case FOLLOWER => {
+          log.info("Not leader, just recording the commit");
+        }
+      }
     }
     case SC_Decide(op: Put) => {
-      log.debug("PUT operation {}", op);
+      log.info("PUT operation {}", op);
       keyValueMap += ((op.key, op.value))
-      trigger(NetMessage(self, op.src, op.response(OpCode.Ok, Some(op.value))) -> net);
+
+      state match {
+        case LEADER => {
+          log.info("Leader answering... {}", op.src);
+          trigger(NetMessage(self, op.src, op.response(OpCode.Ok, Some(op.value))) -> net);
+        }
+        case FOLLOWER => {
+          log.info("Not leader, just recording the commit");
+        }
+      }
     }
     case SC_Decide(op: Cas) => {
-      log.debug("CAS operation {}", op);
+      log.info("CAS operation {}", op);
       val value: Option[String] = if (keyValueMap.contains(op.key)) Some(keyValueMap(op.key)) else None
-      if ((value.isDefined) && (value.get == op.referenceValue)) {
+      if (value.isDefined && (value.get == op.referenceValue)) {
         keyValueMap += ((op.key, op.newValue))
       }
-      trigger(NetMessage(self, op.src, op.response(OpCode.Ok, value)) -> net)
+
+      state match {
+        case LEADER => {
+          log.info("Leader answering... {}", op.src);
+          trigger(NetMessage(self, op.src, op.response(OpCode.Ok, value)) -> net)
+        }
+        case FOLLOWER => {
+          log.info("Not leader, just recording the commit");
+        }
+      }
     }
   }
 }

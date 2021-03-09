@@ -102,8 +102,9 @@ class BootstrapServer extends ComponentDefinition {
   boot uponEvent {
     case InitialAssignments(assignment) => {
       initialAssignment = Some(assignment);
-      log.info("Seeding assignments...");
+      log.debug("Seeding assignments... {}", active);
       active foreach { node =>
+        log.debug("Seeding {} {}", node, assignment);
         trigger(NetMessage(self, node, Boot(assignment)) -> net);
       }
       ready += self;

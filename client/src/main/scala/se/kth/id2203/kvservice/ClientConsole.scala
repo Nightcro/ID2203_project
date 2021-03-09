@@ -49,7 +49,7 @@ class ClientConsole(val service: ClientService) extends CommandConsole with Pars
   override def onInterrupt(): Unit = exit();
 
   val getParser: ParsingObject[String] = new ParsingObject[String] {
-    override def parseOperation[_: P]: P[String] = P("get" ~ " " ~ simpleStr.!);
+    override def parseOperation[_: P]: P[String] = P("get" ~ " " ~ simpleStr.rep.!);
   }
 
   val putParser: ParsingObject[PutObject] = new ParsingObject[PutObject] {

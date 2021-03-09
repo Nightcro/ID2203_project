@@ -1,5 +1,6 @@
 package se.kth.id2203.ble
 
+import se.kth.id2203.beb.{BEB_Topology, BestEffortBroadcast}
 import se.kth.id2203.networking.{NetAddress, NetMessage}
 import se.sics.kompics.network._
 import se.sics.kompics.sl._
@@ -13,6 +14,7 @@ class BallotLeaderElection extends Port {
 }
 
 case class BLE_Leader(leader: NetAddress, ballot: Long) extends KompicsEvent;
+case class BLE_Topology(topology: Set[NetAddress]) extends KompicsEvent;
 
 case class CheckTimeout(timeout: ScheduleTimeout) extends Timeout(timeout);
 case class HeartbeatReq(round: Long, highestBallot: Long) extends KompicsEvent;
@@ -22,13 +24,13 @@ case class StartElection(nodes: Set[NetAddress]) extends KompicsEvent;
 class GossipLeaderElection() extends ComponentDefinition {
 
   val ble: NegativePort[BallotLeaderElection] = provides[BallotLeaderElection];
+  var beb: PositivePort[BestEffortBroadcast] = requires[BestEffortBroadcast];
   val pl: PositivePort[Network] = requires[Network];
   val timer: PositivePort[Timer] = requires[Timer];
 
   val self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address")
   var topology: Set[NetAddress] = Set.empty;
   val delta: Long = cfg.getValue[Long]("id2203.project.delay");
-  var majority: Int = 0;
 
   private var period = cfg.getValue[Long]("id2203.project.delay");
   private val ballots = mutable.Map.empty[NetAddress, Long];
@@ -57,7 +59,6 @@ class GossipLeaderElection() extends ComponentDefinition {
   ble uponEvent {
     case StartElection(nodes: Set[NetAddress]) => {
       topology = nodes;
-      majority = topology.size / 2 + 1;
       startTimer();
     }
   }
@@ -68,7 +69,7 @@ class GossipLeaderElection() extends ComponentDefinition {
     trigger(scheduledTimeout -> timer);
   }
 
-  private def checkLeader() {
+  private def checkLeader(): Unit = {
     val (topProcess, topBallot) = (ballots + ((self, ballot))).maxBy(_._2);
 
     if (topBallot < highestBallot) {
@@ -76,10 +77,17 @@ class GossipLeaderElection() extends ComponentDefinition {
         ballot = incrementBallot(ballot);
       }
       leader = None;
-    } else if (!leader.contains((topBallot, topProcess))) {
-      highestBallot = topBallot;
-      leader = Some((topBallot, topProcess));
-      trigger(BLE_Leader(topProcess, topBallot) -> ble);
+    } else {
+      if (!leader.contains((topBallot, topProcess))) {
+        highestBallot = topBallot;
+        leader = Some((topBallot, topProcess));
+        log.info("Sending leader {}", topProcess);
+        trigger(BLE_Leader(topProcess, topBallot) -> ble);
+      }
+
+      val topology = ballots.keys.toSet + self;
+      trigger(BEB_Topology(topology) -> beb);
+      trigger(BLE_Topology(topology) -> ble);
     }
   }
 

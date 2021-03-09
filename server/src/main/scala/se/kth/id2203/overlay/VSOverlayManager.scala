@@ -23,9 +23,8 @@
  */
 package se.kth.id2203.overlay;
 
-import se.kth.id2203.beb.{BEB_Topology, BestEffortBroadcast}
+import se.kth.id2203.beb.{BEB_Deliver, BEB_Topology, BestEffortBroadcast}
 import se.kth.id2203.bootstrapping._
-import se.kth.id2203.epfd.{EventuallyPerfectFailureDetector, StartEPFD}
 import se.kth.id2203.networking._
 import se.kth.id2203.paxos.{SequenceConsensus, StartSequenceCons}
 import se.sics.kompics.sl._
@@ -51,7 +50,6 @@ class VSOverlayManager extends ComponentDefinition {
   val boot: PositivePort[Bootstrapping.type] = requires(Bootstrapping);
   val net: PositivePort[Network] = requires[Network];
   val timer: PositivePort[Timer] = requires[Timer];
-  val epfd: PositivePort[EventuallyPerfectFailureDetector] = requires[EventuallyPerfectFailureDetector];
   var seqCons: PositivePort[SequenceConsensus] = requires[SequenceConsensus];
   var beb: PositivePort[BestEffortBroadcast] = requires[BestEffortBroadcast];
   //******* Fields ******
@@ -62,7 +60,7 @@ class VSOverlayManager extends ComponentDefinition {
     case GetInitialAssignments(nodes) => {
       log.info("Generating LookupTable...");
       val lut = LookupTable.generate(nodes);
-      logger.debug("Generated assignments:\n$lut");
+      log.debug("Generated assignments:\n$lut");
       trigger(new InitialAssignments(lut) -> boot);
     }
     case Booted(assignment: LookupTable) => {
@@ -71,11 +69,10 @@ class VSOverlayManager extends ComponentDefinition {
       val currentPartition = assignment.findPartitionForNetAddress(self);
       currentPartition match {
         case Some((_, cp)) =>
-          trigger(BEB_Topology(cp.toSet) -> beb)
-          trigger(StartEPFD(cp.toSet) -> epfd)
-          trigger(StartSequenceCons(cp.toSet) -> seqCons)
+          trigger(BEB_Topology(cp.toSet) -> beb);
+          trigger(StartSequenceCons(cp.toSet) -> seqCons);
         case None =>
-          print("Current partition not found")
+          log.warn("Current partition not found");
       }
     }
   }
@@ -83,7 +80,7 @@ class VSOverlayManager extends ComponentDefinition {
   net uponEvent {
     case NetMessage(header, RouteMsg(key, msg)) => {
       val nodes = lut.get.lookup(key);
-      assert(!nodes.isEmpty);
+      assert(nodes.nonEmpty);
       val i = Random.nextInt(nodes.size);
       val target = nodes.drop(i).head;
       log.info(s"Forwarding message for key $key to $target");
@@ -92,11 +89,11 @@ class VSOverlayManager extends ComponentDefinition {
     case NetMessage(header, msg: Connect) => {
       lut match {
         case Some(l) => {
-          log.debug("Accepting connection request from ${header.src}");
+          log.debug("Accepting connection request from {}", header.src);
           val size = l.getNodes().size;
           trigger(NetMessage(self, header.src, msg.ack(size)) -> net);
         }
-        case None => log.info("Rejecting connection request from ${header.src}, as system is not ready, yet.");
+        case None => log.info("Rejecting connection request from {}, as system is not ready, yet.", header.src);
       }
     }
   }
@@ -104,7 +101,7 @@ class VSOverlayManager extends ComponentDefinition {
   route uponEvent {
     case RouteMsg(key, msg) => {
       val nodes = lut.get.lookup(key);
-      assert(!nodes.isEmpty);
+      assert(nodes.nonEmpty);
       val i = Random.nextInt(nodes.size);
       val target = nodes.drop(i).head;
       log.info(s"Routing message for key $key to $target");

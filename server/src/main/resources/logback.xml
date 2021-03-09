@@ -19,10 +19,10 @@
     
     <logger name="Kompics" level="INFO"/>
     <logger name="se.sics.kompics.timer.java.JavaTimer" level="INFO"/>
-    <logger name="se.kth.id2203" level="DEBUG"/>
-    <logger name="se.sics.kompics.network.netty.serialization" level="TRACE"/>
+    <logger name="se.kth.id2203" level="INFO"/>
+    <logger name="se.sics.kompics.network.netty.serialization" level="INFO"/>
 
-    <root level="DEBUG">
+    <root level="INFO">
         <appender-ref ref="CONSOLE"/>
     </root>
 

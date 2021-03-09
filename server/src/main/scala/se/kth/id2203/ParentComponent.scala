@@ -23,10 +23,13 @@
  */
 package se.kth.id2203;
 
+import se.kth.id2203.beb.{BasicBroadcast, BestEffortBroadcast}
+import se.kth.id2203.ble.{BallotLeaderElection, GossipLeaderElection}
 import se.kth.id2203.bootstrapping._
 import se.kth.id2203.kvservice.KVService
 import se.kth.id2203.networking.NetAddress
 import se.kth.id2203.overlay._
+import se.kth.id2203.paxos.{SequenceConsensus, SequencePaxos}
 import se.sics.kompics.sl._
 import se.sics.kompics.{Component, Init}
 import se.sics.kompics.network.Network
@@ -38,6 +41,9 @@ class ParentComponent extends ComponentDefinition {
   val net: PositivePort[Network] = requires[Network];
   val timer: PositivePort[Timer] = requires[Timer];
   //******* Children ******
+  val beb: Component = create(classOf[BasicBroadcast], Init.NONE);
+  val ble: Component = create(classOf[GossipLeaderElection], Init.NONE);
+  val sc: Component = create(classOf[SequencePaxos], Init.NONE);
   val overlay: Component = create(classOf[VSOverlayManager], Init.NONE);
   val kv: Component = create(classOf[KVService], Init.NONE);
   val boot: Component = cfg.readValue[NetAddress]("id2203.project.bootstrap-address") match {
@@ -48,11 +54,29 @@ class ParentComponent extends ComponentDefinition {
   {
     connect[Timer](timer -> boot);
     connect[Network](net -> boot);
+
     // Overlay
     connect(Bootstrapping)(boot -> overlay);
     connect[Network](net -> overlay);
+    connect[BestEffortBroadcast](beb -> overlay);
+    connect[SequenceConsensus](sc -> overlay);
+
     // KV
     connect(Routing)(overlay -> kv);
     connect[Network](net -> kv);
+    connect[BestEffortBroadcast](beb -> kv);
+    connect[SequenceConsensus](sc -> kv);
+
+    // BEB
+    connect[Network](net -> beb);
+
+    // BLE
+    connect[BestEffortBroadcast](beb -> ble);
+    connect[Timer](timer -> ble);
+    connect[Network](net -> ble);
+
+    // Sequence Paxos
+    connect[Network](net -> sc);
+    connect[BallotLeaderElection](ble -> sc);
   }
 }

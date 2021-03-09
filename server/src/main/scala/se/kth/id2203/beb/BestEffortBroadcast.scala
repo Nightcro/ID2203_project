@@ -2,11 +2,10 @@ package se.kth.id2203.beb
 
 import se.kth.id2203.networking.{NetAddress, NetMessage}
 import se.sics.kompics.network._
-import se.sics.kompics.sl.{Init, _}
+import se.sics.kompics.sl._
 import se.sics.kompics.{KompicsEvent, ComponentDefinition => _, Port => _}
 
 import scala.collection.immutable.Set
-import scala.collection.mutable.ListBuffer
 
 class BestEffortBroadcast extends Port {
   indication[BEB_Deliver];
@@ -27,12 +26,14 @@ class BasicBroadcast() extends ComponentDefinition {
 
   //BasicBroadcast Event Handlers
   beb uponEvent {
-    case x: BEB_Broadcast => {
+    case BEB_Broadcast(payload) => {
+      log.debug("Trigger broadcast {}", payload);
       for (q <- topology) {
-        trigger(NetMessage(self, q, x) -> pLink);
+        trigger(NetMessage(self, q, BEB_Broadcast(payload)) -> pLink);
       }
     }
     case BEB_Topology(topology) => {
+      log.debug("Set topology {}", topology);
       this.topology = topology;
     }
   }
