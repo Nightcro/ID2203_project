@@ -55,7 +55,7 @@ class FIFO extends ComponentDefinition {
       breakable
       {
           while (true) {
-          val item = pending.find(x => next.contains(x._1));
+          val item = pending.find(x => next.contains(x._1) && next(x._1) == x._3);
           if (item.isEmpty) {
             break;
           }
