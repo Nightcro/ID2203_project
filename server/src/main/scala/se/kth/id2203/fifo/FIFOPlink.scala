@@ -16,8 +16,9 @@ class FIFOPlink extends Port {
 
 case class PL_Send(source: NetAddress, payload: KompicsEvent) extends KompicsEvent;
 case class PL_Deliver(source: NetAddress, payload: KompicsEvent) extends KompicsEvent;
+case class PL_Topology(topology: Set[NetAddress]) extends KompicsEvent;
 
-case class Tuple(payload: KompicsEvent, i: Integer) extends KompicsEvent;
+case class DataMessage(payload: KompicsEvent, i: Integer) extends KompicsEvent;
 
 class FIFO extends ComponentDefinition {
 
@@ -25,17 +26,20 @@ class FIFO extends ComponentDefinition {
   val pLink: PositivePort[Network] = requires[Network];
 
   val self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address");
-  val lsn: mutable.Map[NetAddress, Integer] = mutable.HashMap.empty[NetAddress, Integer].withDefaultValue(0);
+  val lsn: mutable.Map[NetAddress, Integer] = mutable.HashMap.empty[NetAddress, Integer];
   val next: mutable.Map[NetAddress, Integer] = mutable.HashMap.empty[NetAddress, Integer];
   val pending: ListBuffer[(NetAddress, KompicsEvent, Integer)] = ListBuffer.empty;;
 
   fifoPlink uponEvent {
     case PL_Send(q, m) => {
-      lsn(q) = lsn(q) + 1;
-      if (!next.contains(q)) {
-        next(q) = 1;
+      lsn(q) += 1;
+      trigger(NetMessage(self, q, DataMessage(m, lsn(q))) -> pLink);
+    }
+    case PL_Topology(topology) => {
+      for (p <- topology) {
+        lsn(p) = 0;
+        next(p) = 1;
       }
-      trigger(NetMessage(self, q, Tuple(m, lsn(q))) -> pLink);
     }
     case x => {
       log.error("Unkown FIFO message {}", x);
@@ -43,9 +47,10 @@ class FIFO extends ComponentDefinition {
   }
 
   pLink uponEvent {
-    case NetMessage(header, Tuple(m, i)) => {
+    case NetMessage(header, DataMessage(m, i)) => {
       val listItem = (header.src, m, i);
       pending += listItem;
+      log.debug("PL_Deliver {} {} {}", pending, lsn.toSet, next.toSet);
 
       breakable
       {
@@ -56,7 +61,7 @@ class FIFO extends ComponentDefinition {
           }
 
           val (q, n, sn) = item.get;
-          next(q) = next(q) + 1;
+          next(q) += 1;
           pending -= item.get;
           trigger(PL_Deliver(q, n) -> fifoPlink);
         }

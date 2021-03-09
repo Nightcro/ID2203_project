@@ -1,7 +1,7 @@
 package se.kth.id2203.paxos
 
 import se.kth.id2203.ble.{BLE_Leader, BLE_Topology, BallotLeaderElection, StartElection}
-import se.kth.id2203.fifo.{FIFO, FIFOPlink, PL_Deliver, PL_Send}
+import se.kth.id2203.fifo.{FIFO, FIFOPlink, PL_Deliver, PL_Send, PL_Topology}
 import se.kth.id2203.kvservice.{Operation, Promote}
 import se.kth.id2203.networking.{NetAddress, NetMessage}
 import se.kth.id2203.paxos
@@ -215,6 +215,7 @@ class SequencePaxos extends ComponentDefinition {
     case StartSequenceCons(nodes: Set[NetAddress]) => {
       pi = nodes;
       majority = pi.size / 2 + 1;
+      trigger(PL_Topology(nodes) -> plFifo);
       trigger(StartElection(nodes) -> ble);
     }
   }
