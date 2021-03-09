@@ -79,7 +79,6 @@ class BootstrapClient extends ComponentDefinition {
 
   net uponEvent {
     case NetMessage(header, Boot(assignment)) => {
-      log.info("Am primit ceva? {}, {}", self, assignment);
       state match {
         case Waiting => {
           log.info("{} Booting up.", self);

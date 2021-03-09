@@ -26,6 +26,7 @@ package se.kth.id2203;
 import se.kth.id2203.beb.{BasicBroadcast, BestEffortBroadcast}
 import se.kth.id2203.ble.{BallotLeaderElection, GossipLeaderElection}
 import se.kth.id2203.bootstrapping._
+import se.kth.id2203.fifo.{FIFO, FIFOPlink}
 import se.kth.id2203.kvservice.KVService
 import se.kth.id2203.networking.NetAddress
 import se.kth.id2203.overlay._
@@ -42,6 +43,7 @@ class ParentComponent extends ComponentDefinition {
   val timer: PositivePort[Timer] = requires[Timer];
   //******* Children ******
   val beb: Component = create(classOf[BasicBroadcast], Init.NONE);
+  val fifoPlink: Component = create(classOf[FIFO], Init.NONE);
   val ble: Component = create(classOf[GossipLeaderElection], Init.NONE);
   val sc: Component = create(classOf[SequencePaxos], Init.NONE);
   val overlay: Component = create(classOf[VSOverlayManager], Init.NONE);
@@ -52,8 +54,11 @@ class ParentComponent extends ComponentDefinition {
   }
 
   {
+    // Boot
     connect[Timer](timer -> boot);
     connect[Network](net -> boot);
+
+    connect[Network](net -> fifoPlink);
 
     // Overlay
     connect(Bootstrapping)(boot -> overlay);
@@ -77,6 +82,7 @@ class ParentComponent extends ComponentDefinition {
 
     // Sequence Paxos
     connect[Network](net -> sc);
+    connect[FIFOPlink](fifoPlink -> sc);
     connect[BallotLeaderElection](ble -> sc);
   }
 }

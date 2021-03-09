@@ -1,6 +1,7 @@
 package se.kth.id2203.paxos
 
 import se.kth.id2203.ble.{BLE_Leader, BLE_Topology, BallotLeaderElection, StartElection}
+import se.kth.id2203.fifo.{FIFO, FIFOPlink, PL_Deliver, PL_Send}
 import se.kth.id2203.kvservice.{Operation, Promote}
 import se.kth.id2203.networking.{NetAddress, NetMessage}
 import se.kth.id2203.paxos
@@ -43,7 +44,8 @@ class SequencePaxos extends ComponentDefinition {
 
   val sc: NegativePort[SequenceConsensus] = provides[SequenceConsensus];
   val ble: PositivePort[BallotLeaderElection] = requires[BallotLeaderElection];
-  val pl: PositivePort[Network] = requires[Network];
+  val plFifo: PositivePort[FIFOPlink] = requires[FIFOPlink];
+  val net: PositivePort[Network] = requires[Network];
 
   var self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address");
   var pi: Set[NetAddress] = Set[NetAddress]();
@@ -88,17 +90,17 @@ class SequencePaxos extends ComponentDefinition {
 
           for (p <- pi) {
             if (p != self) {
-              trigger(NetMessage(self, p, Prepare(nL, ld, na)) -> pl);
+              trigger(PL_Send(p, Prepare(nL, ld, na)) -> plFifo);
             }
           }
 
           acks(l) = (na, suffix(va, ld));
           lds(self) = ld;
           nProm = nL;
-          trigger(NetMessage(self, self, Promote(LEADER)) -> pl);
+          trigger(NetMessage(self, self, Promote(LEADER)) -> net);
         } else {
           state = (FOLLOWER, state._2);
-          trigger(NetMessage(self, self, Promote(FOLLOWER)) -> pl);
+          trigger(NetMessage(self, self, Promote(FOLLOWER)) -> net);
         }
       }
     }
@@ -108,8 +110,8 @@ class SequencePaxos extends ComponentDefinition {
     }
   }
 
-  pl uponEvent {
-    case NetMessage(header, Prepare(np, ldp, n)) => {
+  plFifo uponEvent {
+    case PL_Deliver(p, Prepare(np, ldp, n)) => {
       if (nProm < np) {
         nProm = np;
         state = (FOLLOWER, PREPARE);
@@ -119,15 +121,15 @@ class SequencePaxos extends ComponentDefinition {
           sfx = suffix(va, ldp);
         }
 
-        trigger(NetMessage(self, header.src, Promise(np, na, sfx, ld)) -> pl);
+        trigger(PL_Send(p, Promise(np, na, sfx, ld)) -> plFifo);
       }
     }
 
-    case NetMessage(header, Promise(n, nac, sfxa, lda)) => {
+    case PL_Deliver(a, Promise(n, nac, sfxa, lda)) => {
       if ((n == nL) && (state == (LEADER, PREPARE))) {
         na = nac;
-        acks(header.src) = (nac, sfxa);
-        lds(header.src) = lda;
+        acks(a) = (nac, sfxa);
+        lds(a) = lda;
         val P = pi.filter(acks.contains);
 
         if (P.size == majority) {
@@ -139,40 +141,40 @@ class SequencePaxos extends ComponentDefinition {
 
           for (p <- pi.filter(x => lds.contains(x) && (x != self))) {
             val sfxp = suffix(va, lds(p));
-            trigger(NetMessage(self, p, AcceptSync(nL, sfxp, lds(p))) -> pl);
+            trigger(PL_Send(p, AcceptSync(nL, sfxp, lds(p))) -> plFifo);
           }
         }
       } else if ((n == nL) && (state == (LEADER, ACCEPT))) {
-        lds(header.src) = lda;
-        val sfx = suffix(va, lds(header.src));
+        lds(a) = lda;
+        val sfx = suffix(va, lds(a));
 
-        trigger(NetMessage(self, header.src, AcceptSync(nL, sfx, lds(header.src))) -> pl);
+        trigger(PL_Send(a, AcceptSync(nL, sfx, lds(a))) -> plFifo);
 
         if (lc != 0) {
-          trigger(NetMessage(self, header.src, Decide(ld, nL)) -> pl);
+          trigger(PL_Send(a, Decide(ld, nL)) -> plFifo);
         }
       }
     }
 
-    case NetMessage(header, AcceptSync(nL, sfx, ldp)) => {
+    case PL_Deliver(p, AcceptSync(nL, sfx, ldp)) => {
       if ((nProm == nL) && (state == (FOLLOWER, PREPARE))) {
         na = nL;
         va = prefix(va, ld) ++ sfx;
 
-        trigger(NetMessage(self, header.src, Accepted(nL, va.size)) -> pl);
+        trigger(PL_Send(p, Accepted(nL, va.size)) -> plFifo);
 
         state = (FOLLOWER, ACCEPT);
       }
     }
 
-    case NetMessage(header, Accept(nL, c)) => {
+    case PL_Deliver(p, Accept(nL, c)) => {
       if ((nProm == nL) && (state == (FOLLOWER, ACCEPT))) {
         va = va :+ c;
-        trigger(NetMessage(self, header.src, Accepted(nL, va.size)) -> pl);
+        trigger(PL_Send(p, Accepted(nL, va.size)) -> plFifo);
       }
     }
 
-    case NetMessage(_, Decide(l, nL)) => {
+    case PL_Deliver(_, Decide(l, nL)) => {
       if (nProm == nL) {
         while (ld < l) {
           trigger(SC_Decide(va(ld)) -> sc);
@@ -181,15 +183,15 @@ class SequencePaxos extends ComponentDefinition {
       }
     }
 
-    case NetMessage(header, Accepted(n, m)) => {
+    case PL_Deliver(a, Accepted(n, m)) => {
       if ((n == nL) && (state == (LEADER, ACCEPT))) {
-        las(header.src) = m;
+        las(a) = m;
 
         if ((lc < m) && (pi.count(x => las.contains(x) && (las(x) >= m)) >= majority)) {
           lc = m;
 
           for (p <- pi.filter(lds.contains)) {
-            trigger(NetMessage(self, p, Decide(lc, nL)) -> pl);
+            trigger(PL_Send(p, Decide(lc, nL)) -> plFifo);
           }
         }
       }
@@ -206,7 +208,7 @@ class SequencePaxos extends ComponentDefinition {
         las(self) += 1;
 
         for (p <- pi.filter(x => lds.contains(x) && (x != self))) {
-          trigger(NetMessage(self, p, Accept(nL, c)) -> pl);
+          trigger(PL_Send(p, Accept(nL, c)) -> plFifo);
         }
       }
     }

@@ -71,6 +71,8 @@ class OpsTest extends AnyFlatSpec with Matchers {
 //      SimulationResult.get[String](s"test$i") should be (Some("NotImplemented"));
 //      // of course the correct response should be Success not NotImplemented, but like this the test passes
 //    }
+
+
   }
 
 }

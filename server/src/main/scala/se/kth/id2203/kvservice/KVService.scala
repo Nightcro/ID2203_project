@@ -51,14 +51,14 @@ class KVService extends ComponentDefinition {
   //******* Handlers ******
   beb uponEvent {
     case BEB_Deliver(src, op: Operation) => {
-      log.debug("Propose {} {}", op, op.key);
+      log.info("Propose {} {}", op, op.key);
       trigger(SC_Propose(op) -> sc);
     }
   }
 
   net uponEvent {
     case NetMessage(_, op: Operation) => {
-      log.debug("Trigger broadcast {} {}", op, op.key);
+      log.info("Trigger broadcast {} {}", op, op.key);
       trigger(BEB_Broadcast(op) -> beb);
     }
     case NetMessage(_, Promote(rl)) => {
@@ -73,7 +73,7 @@ class KVService extends ComponentDefinition {
 
       state match {
         case LEADER => {
-          log.info("Leader answering... {}", op.src);
+          log.info("Leader responding to {}", op.src);
           trigger(NetMessage(self, op.src, op.response(OpCode.Ok, value)) -> net);
         }
         case FOLLOWER => {
@@ -87,7 +87,7 @@ class KVService extends ComponentDefinition {
 
       state match {
         case LEADER => {
-          log.info("Leader answering... {}", op.src);
+          log.info("Leader responding to {}", op.src);
           trigger(NetMessage(self, op.src, op.response(OpCode.Ok, Some(op.value))) -> net);
         }
         case FOLLOWER => {
@@ -104,7 +104,7 @@ class KVService extends ComponentDefinition {
 
       state match {
         case LEADER => {
-          log.info("Leader answering... {}", op.src);
+          log.info("Leader responding to {}", op.src);
           trigger(NetMessage(self, op.src, op.response(OpCode.Ok, value)) -> net)
         }
         case FOLLOWER => {

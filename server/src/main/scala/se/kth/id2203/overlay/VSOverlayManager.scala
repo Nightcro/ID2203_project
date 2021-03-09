@@ -25,6 +25,7 @@ package se.kth.id2203.overlay;
 
 import se.kth.id2203.beb.{BEB_Deliver, BEB_Topology, BestEffortBroadcast}
 import se.kth.id2203.bootstrapping._
+import se.kth.id2203.fifo.FIFOPlink
 import se.kth.id2203.networking._
 import se.kth.id2203.paxos.{SequenceConsensus, StartSequenceCons}
 import se.sics.kompics.sl._
@@ -60,7 +61,7 @@ class VSOverlayManager extends ComponentDefinition {
     case GetInitialAssignments(nodes) => {
       log.info("Generating LookupTable...");
       val lut = LookupTable.generate(nodes);
-      log.debug("Generated assignments:\n$lut");
+      log.debug("Generated assignments:\n{}", lut);
       trigger(new InitialAssignments(lut) -> boot);
     }
     case Booted(assignment: LookupTable) => {

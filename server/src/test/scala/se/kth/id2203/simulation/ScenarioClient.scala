@@ -23,15 +23,16 @@
  */
 package se.kth.id2203.simulation;
 
-import java.util.UUID;
-import se.kth.id2203.kvservice._;
-import se.kth.id2203.networking._;
-import se.kth.id2203.overlay.RouteMsg;
+import java.util.UUID
+import se.kth.id2203.kvservice._
+import se.kth.id2203.networking._
+import se.kth.id2203.overlay.RouteMsg
 import se.sics.kompics.sl._
-import se.sics.kompics.Start;
-import se.sics.kompics.network.Network;
-import se.sics.kompics.timer.Timer;
-import se.sics.kompics.sl.simulator.SimulationResult;
+import se.sics.kompics.Start
+import se.sics.kompics.network.Network
+import se.sics.kompics.timer.Timer
+import se.sics.kompics.sl.simulator.SimulationResult
+
 import collection.mutable;
 
 class ScenarioClient extends ComponentDefinition {
