@@ -1,6 +1,5 @@
 package se.kth.id2203.ble
 
-import se.kth.id2203.beb.{BEB_Topology, BestEffortBroadcast}
 import se.kth.id2203.networking.{NetAddress, NetMessage}
 import se.sics.kompics.network._
 import se.sics.kompics.sl._
@@ -11,6 +10,7 @@ import scala.collection.mutable
 
 class BallotLeaderElection extends Port {
   indication[BLE_Leader];
+  indication[BLE_Topology];
 }
 
 case class BLE_Leader(leader: NetAddress, ballot: Long) extends KompicsEvent;
@@ -24,7 +24,6 @@ case class StartElection(nodes: Set[NetAddress]) extends KompicsEvent;
 class GossipLeaderElection() extends ComponentDefinition {
 
   val ble: NegativePort[BallotLeaderElection] = provides[BallotLeaderElection];
-  var beb: PositivePort[BestEffortBroadcast] = requires[BestEffortBroadcast];
   val pl: PositivePort[Network] = requires[Network];
   val timer: PositivePort[Timer] = requires[Timer];
 
@@ -86,7 +85,6 @@ class GossipLeaderElection() extends ComponentDefinition {
       }
 
       val topology = ballots.keys.toSet + self;
-      trigger(BEB_Topology(topology) -> beb);
       trigger(BLE_Topology(topology) -> ble);
     }
   }

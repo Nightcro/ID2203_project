@@ -21,21 +21,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package se.kth.id2203.simulation;
+package se.kth.id2203.simulation.operations
 
-import java.util.UUID
 import se.kth.id2203.kvservice._
 import se.kth.id2203.networking._
 import se.kth.id2203.overlay.RouteMsg
-import se.sics.kompics.sl._
 import se.sics.kompics.Start
 import se.sics.kompics.network.Network
-import se.sics.kompics.timer.Timer
+import se.sics.kompics.sl._
 import se.sics.kompics.sl.simulator.SimulationResult
+import se.sics.kompics.timer.Timer
 
-import collection.mutable;
+import java.util.UUID
+import scala.collection.mutable;
 
-class ScenarioClient extends ComponentDefinition {
+class ScenarioClientGet() extends ComponentDefinition {
 
   //******* Ports ******
   val net = requires[Network];
@@ -45,20 +45,26 @@ class ScenarioClient extends ComponentDefinition {
   val server = cfg.getValue[NetAddress]("id2203.project.bootstrap-address");
   private val pending = mutable.Map.empty[UUID, String];
   //******* Handlers ******
+
+  //BasicBroadcast Component State and Initialization
+  private def sendAndLog(op: Operation): Unit = {
+    val routeMsg = RouteMsg(op.key, op);
+    trigger(NetMessage(self, server, routeMsg) -> net);
+    pending += (op.id -> op.key);
+    logger.info("Sending {}", op);
+    SimulationResult += (op.key -> "Sent");
+  }
+
   ctrl uponEvent {
     case _: Start => {
       val messages = SimulationResult[Int]("messages");
-      val op1 = new Put("test3", "cacat", self);
-      val routeMsg1 = RouteMsg(op1.key, op1); // don't know which partition is responsible, so ask the bootstrap server to forward it
-      trigger(NetMessage(self, server, routeMsg1) -> net);
-      pending += (op1.id -> op1.key);
+
       for (i <- 0 to messages) {
-        val op = new Get(s"test$i", self);
-        val routeMsg = RouteMsg(op.key, op); // don't know which partition is responsible, so ask the bootstrap server to forward it
-        trigger(NetMessage(self, server, routeMsg) -> net);
-        pending += (op.id -> op.key);
-        logger.info("Sending {}", op);
-        SimulationResult += (op.key -> "Sent");
+        sendAndLog(Put(s"unit_test$i", s"kth$i", self));
+      }
+
+      for (i <- 0 to messages) {
+        sendAndLog(Get(s"unit_test$i", self));
       }
     }
   }
@@ -67,7 +73,7 @@ class ScenarioClient extends ComponentDefinition {
     case NetMessage(header, or @ OpResponse(id, status, value)) => {
       logger.debug(s"Got OpResponse: $or");
       pending.remove(id) match {
-        case Some(key) => SimulationResult += (key -> value);
+        case Some(key) => SimulationResult += (key -> value.getOrElse(None));
         case None      => logger.warn("ID $id was not pending! Ignoring response.");
       }
     }

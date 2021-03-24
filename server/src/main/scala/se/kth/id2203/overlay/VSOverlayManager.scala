@@ -23,7 +23,7 @@
  */
 package se.kth.id2203.overlay;
 
-import se.kth.id2203.beb.{BEB_Deliver, BEB_Topology, BestEffortBroadcast}
+import se.kth.id2203.ble.{BLE_Leader, BallotLeaderElection}
 import se.kth.id2203.bootstrapping._
 import se.kth.id2203.fifo.FIFOPlink
 import se.kth.id2203.networking._
@@ -52,7 +52,7 @@ class VSOverlayManager extends ComponentDefinition {
   val net: PositivePort[Network] = requires[Network];
   val timer: PositivePort[Timer] = requires[Timer];
   var seqCons: PositivePort[SequenceConsensus] = requires[SequenceConsensus];
-  var beb: PositivePort[BestEffortBroadcast] = requires[BestEffortBroadcast];
+  val ble: PositivePort[BallotLeaderElection] = requires[BallotLeaderElection];
   //******* Fields ******
   val self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address");
   private var lut: Option[LookupTable] = None;
@@ -68,9 +68,9 @@ class VSOverlayManager extends ComponentDefinition {
       log.info("Got NodeAssignment, overlay ready.");
       lut = Some(assignment);
       val currentPartition = assignment.findPartitionForNetAddress(self);
+      assignment.setCurrentPartition(self);
       currentPartition match {
         case Some((_, cp)) =>
-          trigger(BEB_Topology(cp.toSet) -> beb);
           trigger(StartSequenceCons(cp.toSet) -> seqCons);
         case None =>
           log.warn("Current partition not found");
@@ -78,12 +78,15 @@ class VSOverlayManager extends ComponentDefinition {
     }
   }
 
+  ble uponEvent {
+    case BLE_Leader(l, n) => {
+      lut.get.setLeaderPartition(l);
+    }
+  }
+
   net uponEvent {
     case NetMessage(header, RouteMsg(key, msg)) => {
-      val nodes = lut.get.lookup(key);
-      assert(nodes.nonEmpty);
-      val i = Random.nextInt(nodes.size);
-      val target = nodes.drop(i).head;
+      val target = lut.get.getLeaderCurrentPartition();
       log.info(s"Forwarding message for key $key to $target");
       trigger(NetMessage(header.src, target, msg) -> net);
     }

@@ -23,15 +23,21 @@
  */
 package se.kth.id2203.overlay;
 
-import com.larskroll.common.collections._;
-import java.util.Collection;
-import se.kth.id2203.bootstrapping.NodeAssignment;
-import se.kth.id2203.networking.NetAddress;
+import com.larskroll.common.collections._
+
+import java.util.Collection
+import se.kth.id2203.bootstrapping.NodeAssignment
+import se.kth.id2203.networking.NetAddress
+
+import scala.collection.mutable
+import scala.collection.mutable.Map
 
 @SerialVersionUID(6322485231428233902L)
 class LookupTable extends NodeAssignment with Serializable {
 
   val partitions: TreeSetMultiMap[Int, NetAddress] = TreeSetMultiMap.empty[Int, NetAddress];
+  val leaderPartitions: mutable.Map[Int, NetAddress] = mutable.Map.empty[Int, NetAddress];
+  var currentPartition: Int = 0;
 
   def lookup(key: String): Iterable[NetAddress] = {
     val keyHash = key.hashCode();
@@ -58,6 +64,17 @@ class LookupTable extends NodeAssignment with Serializable {
     return sb.toString();
   }
 
+  def setCurrentPartition(node: NetAddress): Unit = {
+    currentPartition = findPartitionForNetAddress(node).get._1;
+  }
+
+  def setLeaderPartition(leader: NetAddress) = {
+    leaderPartitions += (currentPartition -> leader);
+  }
+
+  def getLeaderCurrentPartition(): NetAddress = {
+    return leaderPartitions(currentPartition);
+  }
 }
 
 object LookupTable {

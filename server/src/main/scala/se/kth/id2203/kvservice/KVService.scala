@@ -23,7 +23,6 @@
  */
 package se.kth.id2203.kvservice;
 
-import se.kth.id2203.beb.{BEB_Broadcast, BEB_Deliver, BestEffortBroadcast}
 import se.kth.id2203.networking._
 import se.kth.id2203.overlay.Routing
 import se.kth.id2203.paxos
@@ -32,7 +31,7 @@ import se.kth.id2203.paxos.{SC_Decide, SC_Propose, SequenceConsensus}
 import se.sics.kompics.sl._
 import se.sics.kompics.network.Network
 
-import scala.collection.mutable;
+import scala.collection.concurrent.TrieMap;
 
 case class Promote(rl: Role) extends KompicsEvent;
 
@@ -42,24 +41,16 @@ class KVService extends ComponentDefinition {
   val net: PositivePort[Network] = requires[Network];
   val route: PositivePort[Routing.type] = requires(Routing);
   val sc: PositivePort[SequenceConsensus] = requires[SequenceConsensus];
-  var beb: PositivePort[BestEffortBroadcast] = requires[BestEffortBroadcast];
   //******* Fields ******
   val self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address");
-  val keyValueMap = mutable.Map.empty[String, String];
+  val keyValueMap = TrieMap.empty[String, String];
   var state: paxos.Role.Value = FOLLOWER;
 
   //******* Handlers ******
-  beb uponEvent {
-    case BEB_Deliver(src, op: Operation) => {
-      log.info("Propose {} {}", op, op.key);
-      trigger(SC_Propose(op) -> sc);
-    }
-  }
-
   net uponEvent {
     case NetMessage(_, op: Operation) => {
-      log.info("Trigger broadcast {} {}", op, op.key);
-      trigger(BEB_Broadcast(op) -> beb);
+      log.info("Propose {} {}", op, op.key);
+      trigger(SC_Propose(op) -> sc);
     }
     case NetMessage(_, Promote(rl)) => {
       state = rl;

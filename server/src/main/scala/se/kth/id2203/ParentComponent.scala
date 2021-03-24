@@ -23,7 +23,6 @@
  */
 package se.kth.id2203;
 
-import se.kth.id2203.beb.{BasicBroadcast, BestEffortBroadcast}
 import se.kth.id2203.ble.{BallotLeaderElection, GossipLeaderElection}
 import se.kth.id2203.bootstrapping._
 import se.kth.id2203.fifo.{FIFO, FIFOPlink}
@@ -42,7 +41,6 @@ class ParentComponent extends ComponentDefinition {
   val net: PositivePort[Network] = requires[Network];
   val timer: PositivePort[Timer] = requires[Timer];
   //******* Children ******
-  val beb: Component = create(classOf[BasicBroadcast], Init.NONE);
   val fifoPlink: Component = create(classOf[FIFO], Init.NONE);
   val ble: Component = create(classOf[GossipLeaderElection], Init.NONE);
   val sc: Component = create(classOf[SequencePaxos], Init.NONE);
@@ -58,25 +56,21 @@ class ParentComponent extends ComponentDefinition {
     connect[Timer](timer -> boot);
     connect[Network](net -> boot);
 
+    // FIFO
     connect[Network](net -> fifoPlink);
 
     // Overlay
     connect(Bootstrapping)(boot -> overlay);
     connect[Network](net -> overlay);
-    connect[BestEffortBroadcast](beb -> overlay);
     connect[SequenceConsensus](sc -> overlay);
+    connect[BallotLeaderElection](ble -> overlay);
 
     // KV
     connect(Routing)(overlay -> kv);
     connect[Network](net -> kv);
-    connect[BestEffortBroadcast](beb -> kv);
     connect[SequenceConsensus](sc -> kv);
 
-    // BEB
-    connect[Network](net -> beb);
-
     // BLE
-    connect[BestEffortBroadcast](beb -> ble);
     connect[Timer](timer -> ble);
     connect[Network](net -> ble);
 

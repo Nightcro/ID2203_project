@@ -21,60 +21,69 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package se.kth.id2203.simulation
+package se.kth.id2203.simulation.operations
 
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import se.kth.id2203.ParentComponent
 import se.kth.id2203.networking._
 import se.sics.kompics.network.Address
-
-import java.net.{InetAddress, UnknownHostException}
+import se.sics.kompics.simulator.network.impl.NetworkModels
+import se.sics.kompics.simulator.result.SimulationResultSingleton
+import se.sics.kompics.simulator.run.LauncherComp
+import se.sics.kompics.simulator.{SimulationScenario => JSimulationScenario}
 import se.sics.kompics.sl._
 import se.sics.kompics.sl.simulator._
-import se.sics.kompics.simulator.{SimulationScenario => JSimulationScenario}
-import se.sics.kompics.simulator.run.LauncherComp
-import se.sics.kompics.simulator.result.SimulationResultSingleton
-import se.sics.kompics.simulator.network.impl.NetworkModels
 
+import java.net.{InetAddress, UnknownHostException}
 import scala.concurrent.duration._
 
 class OpsTest extends AnyFlatSpec with Matchers {
 
   private val nMessages = 10;
 
-  //  "Classloader" should "be something" in {
-  //    val cname = classOf[SimulationResultSingleton].getCanonicalName();
-  //    var cl = classOf[SimulationResultSingleton].getClassLoader;
-  //    var i = 0;
-  //    while (cl != null) {
-  //      val res = try {
-  //        val c = cl.loadClass(cname);
-  //        true
-  //      } catch {
-  //        case t: Throwable => false
-  //      }
-  //      println(s"$i -> ${cl.getClass.getName} has class? $res");
-  //      cl = cl.getParent();
-  //      i -= 1;
-  //    }
-  //  }
-
-  "Simple Operations" should "not be implemented" in { // well of course eventually they should be implemented^^
+  "Put operation" should "be implemented" in {
     val seed = 123L;
     JSimulationScenario.setSeed(seed);
-    val simpleBootScenario = SimpleScenario.scenario(3);
+    val simpleBootScenario = SimpleScenario.scenario(5, 0);
     val res = SimulationResultSingleton.getInstance();
     SimulationResult += ("messages" -> nMessages);
     simpleBootScenario.simulate(classOf[LauncherComp]);
-//    for (i <- 0 to nMessages) {
-//      SimulationResult.get[String](s"test$i") should be (Some("NotImplemented"));
-//      // of course the correct response should be Success not NotImplemented, but like this the test passes
-//    }
-
-
+    for (i <- 0 to nMessages) {
+      //PUT operation
+      SimulationResult.get[String](s"unit_test$i") should be (Some(s"kth$i"));
+    }
   }
 
+  "Get operation" should "be implemented" in {
+    val seed = 123L;
+    JSimulationScenario.setSeed(seed);
+    val simpleBootScenario = SimpleScenario.scenario(5, 1);
+    val res = SimulationResultSingleton.getInstance();
+    SimulationResult += ("messages" -> nMessages);
+    simpleBootScenario.simulate(classOf[LauncherComp]);
+    for (i <- 0 to nMessages) {
+      //Get operation
+      SimulationResult.get[String](s"unit_test$i") should be (Some(s"kth$i"));
+    }
+  }
+
+  "Cas operation" should "be implemented" in {
+    val seed = 123L;
+    JSimulationScenario.setSeed(seed);
+    val simpleBootScenario = SimpleScenario.scenario(5, 2);
+    val res = SimulationResultSingleton.getInstance();
+    SimulationResult += ("messages" -> nMessages);
+    simpleBootScenario.simulate(classOf[LauncherComp]);
+    for (i <- 0 to nMessages) {
+      //Cas operation
+      if (i % 2 == 0) {
+        SimulationResult.get[String](s"unit_test$i") should be (Some(s"cas$i"));
+      } else {
+        SimulationResult.get[String](s"unit_test$i") should be (Some(s"kth$i"));
+      }
+    }
+  }
 }
 
 object SimpleScenario {
@@ -100,7 +109,7 @@ object SimpleScenario {
 
   private def isBootstrap(self: Int): Boolean = self == 1;
 
-  val setUniformLatencyNetwork = () => Op.apply((_: Unit) => ChangeNetwork(NetworkModels.withUniformRandomDelay(3, 7)));
+  val setUniformLatencyNetwork = () => Op.apply((_: Unit) => ChangeNetwork(NetworkModels.withConstantDelay(0)));
 
   val startServerOp = Op { (self: Integer) =>
 
@@ -116,19 +125,43 @@ object SimpleScenario {
     StartNode(selfAddr, Init.none[ParentComponent], conf);
   };
 
-  val startClientOp = Op { (self: Integer) =>
+  val startClientOpPut = Op { (self: Integer) =>
     val selfAddr = intToClientAddress(self)
     val conf = Map(
       "id2203.project.address" -> selfAddr,
       "id2203.project.bootstrap-address" -> intToServerAddress(1));
-    StartNode(selfAddr, Init.none[ScenarioClient], conf);
+    StartNode(selfAddr, Init.none[ScenarioClientPut], conf);
   };
 
-  def scenario(servers: Int): JSimulationScenario = {
+  val startClientOpGet = Op { (self: Integer) =>
+    val selfAddr = intToClientAddress(self)
+    val conf = Map(
+      "id2203.project.address" -> selfAddr,
+      "id2203.project.bootstrap-address" -> intToServerAddress(1));
+    StartNode(selfAddr, Init.none[ScenarioClientGet], conf);
+  };
+
+  val startClientOpCas = Op { (self: Integer) =>
+    val selfAddr = intToClientAddress(self)
+    val conf = Map(
+      "id2203.project.address" -> selfAddr,
+      "id2203.project.bootstrap-address" -> intToServerAddress(1));
+    StartNode(selfAddr, Init.none[ScenarioClientCas], conf);
+  };
+
+  def scenario(servers: Int, scenario: Int): JSimulationScenario = {
 
     val networkSetup = raise(1, setUniformLatencyNetwork()).arrival(constant(0));
     val startCluster = raise(servers, startServerOp, 1.toN).arrival(constant(1.second));
-    val startClients = raise(1, startClientOp, 1.toN).arrival(constant(1.second));
+    var startClients: StochasticProcess = null;
+
+    if (scenario == 0) {
+      startClients = raise(1, startClientOpPut, 1.toN).arrival(constant(1.second));
+    } else if (scenario == 1) {
+      startClients = raise(1, startClientOpGet, 1.toN).arrival(constant(1.second));
+    } else if (scenario == 2) {
+      startClients = raise(1, startClientOpCas, 1.toN).arrival(constant(1.second));
+    }
 
     networkSetup andThen
       0.seconds afterTermination startCluster andThen
