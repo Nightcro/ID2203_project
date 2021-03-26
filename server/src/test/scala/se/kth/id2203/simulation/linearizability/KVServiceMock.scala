@@ -26,6 +26,7 @@ class KVServiceMock extends ComponentDefinition {
 
   private val pending = mutable.Map.empty[UUID, String];
   val trace: mutable.Queue[Operation] = mutable.Queue.empty[Operation];
+  val received: mutable.Queue[Operation] = mutable.Queue.empty[Operation];
   var qMsgID: UUID = UUID.randomUUID();
   var leader: Option[NetAddress] = None;
 
@@ -69,7 +70,9 @@ class KVServiceMock extends ComponentDefinition {
 
     for (i <- 0 to messages) {
       val op = Get(s"unit_test$i", self);
-      qMsgID = op.id;
+      if (messages == i) {
+        qMsgID = op.id;
+      }
       sendAndLog(op);
     }
   }
@@ -77,10 +80,10 @@ class KVServiceMock extends ComponentDefinition {
   sc uponEvent {
     case SC_Decide(op) => {
       var correctTrace = true;
+      received.enqueue(op);
 
       if(op.id.equals(qMsgID)){
-        val tempTrace = trace.clone();
-        val opr = tempTrace.dequeue();
+        val opr = received.dequeue();
 
         while(!opr.id.equals(trace.dequeue().id))
         if(trace.nonEmpty){
