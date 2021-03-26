@@ -1,6 +1,8 @@
 package se.kth.id2203.simulation.leader
 
-import scala.collection.mutable;
+import org.scalatest.DoNotDiscover
+
+import scala.collection.mutable
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import se.kth.id2203.ParentComponent
@@ -20,7 +22,7 @@ import se.sics.kompics.sl.simulator._
 import java.net.{InetAddress, UnknownHostException}
 import scala.concurrent.duration._
 
-
+@DoNotDiscover
 class LeaderTest extends AnyFlatSpec with Matchers {
   "Leader election" should "be implemented" in {
     val seed = 123L;

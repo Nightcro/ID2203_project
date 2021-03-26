@@ -23,6 +23,7 @@
  */
 package se.kth.id2203.simulation.operations
 
+import org.scalatest.DoNotDiscover
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import se.kth.id2203.ParentComponent
@@ -38,6 +39,7 @@ import se.sics.kompics.sl.simulator._
 import java.net.{InetAddress, UnknownHostException}
 import scala.concurrent.duration._
 
+@DoNotDiscover
 class OpsTest extends AnyFlatSpec with Matchers {
   private val nMessages = 10;
 
