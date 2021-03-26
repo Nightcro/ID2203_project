@@ -45,11 +45,15 @@ class ScenarioClientGet() extends ComponentDefinition {
   val server = cfg.getValue[NetAddress]("id2203.project.bootstrap-address");
   private val pending = mutable.Map.empty[UUID, String];
 
-  private def sendAndLog(op: Operation): Unit = {
+  private def send(op: Operation): Unit = {
     val routeMsg = RouteMsg(op.key, op);
     trigger(NetMessage(self, server, routeMsg) -> net);
     pending += (op.id -> op.key);
     logger.info("Sending {}", op);
+  }
+
+  private def sendAndLog(op: Operation): Unit = {
+    send(op);
     SimulationResult += (op.key -> "Sent");
   }
 
@@ -58,7 +62,7 @@ class ScenarioClientGet() extends ComponentDefinition {
       val messages = SimulationResult[Int]("messages");
 
       for (i <- 0 to messages) {
-        sendAndLog(Put(s"unit_test$i", s"kth$i", self));
+        send(Put(s"unit_test$i", s"kth$i", self));
       }
 
       for (i <- 0 to messages) {
