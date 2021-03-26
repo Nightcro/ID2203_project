@@ -44,9 +44,7 @@ class ScenarioClientPut() extends ComponentDefinition {
   val self = cfg.getValue[NetAddress]("id2203.project.address");
   val server = cfg.getValue[NetAddress]("id2203.project.bootstrap-address");
   private val pending = mutable.Map.empty[UUID, String];
-  //******* Handlers ******
 
-  //BasicBroadcast Component State and Initialization
   private def sendAndLog(op: Operation): Unit = {
     val routeMsg = RouteMsg(op.key, op);
     trigger(NetMessage(self, server, routeMsg) -> net);

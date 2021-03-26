@@ -39,7 +39,6 @@ import java.net.{InetAddress, UnknownHostException}
 import scala.concurrent.duration._
 
 class OpsTest extends AnyFlatSpec with Matchers {
-
   private val nMessages = 10;
 
   "Put operation" should "be implemented" in {
@@ -75,6 +74,7 @@ class OpsTest extends AnyFlatSpec with Matchers {
     val res = SimulationResultSingleton.getInstance();
     SimulationResult += ("messages" -> nMessages);
     simpleBootScenario.simulate(classOf[LauncherComp]);
+
     for (i <- 0 to nMessages) {
       //Cas operation
       if (i % 2 == 0) {
