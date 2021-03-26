@@ -1,5 +1,6 @@
 package se.kth.id2203.simulation.leader
 
+import scala.collection.mutable;
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import se.kth.id2203.ParentComponent
@@ -28,9 +29,13 @@ class LeaderTest extends AnyFlatSpec with Matchers {
     val res = SimulationResultSingleton.getInstance();
     simpleBootScenario.simulate(classOf[LauncherComp]);
 
+    var unique: Set[String] = Set[String]();
+
     for (i <- 0 to 3) {
-      SimulationResult.get[String](s"Leader$i").get should startWith ("/192.193.0.");
+      unique += SimulationResult.get[String](s"Leader$i").get;
     }
+
+    unique.size should be (4);
   }
 }
 
