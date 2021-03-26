@@ -1,10 +1,9 @@
 package se.kth.id2203.simulation.linearizability
 
-import se.kth.id2203.ble.{BLE_Leader, BallotLeaderElection, CheckTimeout, HeartbeatReq, StartElection}
-import se.kth.id2203.networking.{NetAddress, NetMessage}
-import se.sics.kompics.KompicsEvent
+import se.kth.id2203.ble.{BLE_Leader, BallotLeaderElection, CheckTimeout, StartElection}
+import se.kth.id2203.networking.NetAddress
 import se.sics.kompics.network.Network
-import se.sics.kompics.sl.{ComponentDefinition, NegativePort, Port, PositivePort}
+import se.sics.kompics.sl.{ComponentDefinition, NegativePort, PositivePort}
 import se.sics.kompics.timer.{ScheduleTimeout, Timer}
 
 class GossipLeaderElectionMock() extends ComponentDefinition {
@@ -14,7 +13,7 @@ class GossipLeaderElectionMock() extends ComponentDefinition {
 
   val leader: NetAddress = cfg.getValue[NetAddress]("id2203.project.leader")
   private val ballotLeader = ballotFromNAddress(0, leader);
-  private val period = cfg.getValue[Long]("id2203.project.delay");
+  private val period = cfg.getValue[Long]("id2203.project.delayStart");
 
   def ballotFromNAddress(n: Int, adr: NetAddress): Long = {
     val nBytes = com.google.common.primitives.Ints.toByteArray(n);

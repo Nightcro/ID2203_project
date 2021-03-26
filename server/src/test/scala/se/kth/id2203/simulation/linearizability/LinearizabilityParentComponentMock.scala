@@ -26,6 +26,7 @@ class LinearizabilityParentComponentMock extends ComponentDefinition {
   val kvBeta: Component = create(classOf[KVServiceMock], Init.NONE);
   val kvReal: Component = create(classOf[KVService], Init.NONE);
   val self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address");
+  val target: NetAddress = cfg.getValue[NetAddress]("id2203.project.target");
   val boot: Component = cfg.readValue[NetAddress]("id2203.project.bootstrap-address") match {
     case Some(_) => create(classOf[BootstrapClient], Init.NONE); // start in client mode
     case None    => create(classOf[BootstrapServer], Init.NONE); // start in server mode
@@ -46,7 +47,7 @@ class LinearizabilityParentComponentMock extends ComponentDefinition {
     connect[BallotLeaderElection](ble -> overlay);
 
     // KV
-    if (self.getIp().getHostAddress.equals("192.193.0.2")) {
+    if (self.getIp().equals(target.getIp())) {
       connect(Routing)(overlay -> kvBeta);
       connect[Network](net -> kvBeta);
       connect[SequenceConsensus](sc -> kvBeta);

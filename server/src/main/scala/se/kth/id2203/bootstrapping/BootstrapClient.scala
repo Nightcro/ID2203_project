@@ -84,7 +84,10 @@ class BootstrapClient extends ComponentDefinition {
           log.info("{} Booting up.", self);
           trigger(Booted(assignment) -> bootstrap);
           timeoutId match {
-            case Some(tid) => trigger(new CancelPeriodicTimeout(tid) -> timer);
+            case Some(tid) => {
+              trigger(new CancelPeriodicTimeout(tid) -> timer);
+              timeoutId = None;
+            };
             case None      => // nothing to cancel
           }
           trigger(NetMessage(self, server, Ready) -> net);

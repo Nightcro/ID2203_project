@@ -84,11 +84,7 @@ class KVServiceMock extends ComponentDefinition {
 
         while(!opr.id.equals(trace.dequeue().id))
         if(trace.nonEmpty){
-          correctTrace = false
-          log.info("Not Linearizable")
-        }
-        else{
-          log.info("Is Linearizable")
+          correctTrace = false;
         }
 
         SimulationResult += ("Linearizability" -> correctTrace);

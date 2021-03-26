@@ -122,7 +122,10 @@ class BootstrapServer extends ComponentDefinition {
 
   override def tearDown(): Unit = {
     timeoutId match {
-      case Some(tid) => trigger(new CancelPeriodicTimeout(tid) -> timer);
+      case Some(tid) => {
+        trigger(new CancelPeriodicTimeout(tid) -> timer);
+        timeoutId = None;
+      };
       case None      => // nothing to clean up
     }
   }
